@@ -1,0 +1,77 @@
+# PA_DSH —— PA_MCP × dsh 插件冒烟（正式插件 pa-mcp-dsh-plugin）
+#
+# 目标：PA_MCP 每次改动(尤其增/删/改工具)后，自动验证它仍能被正式插件桥接——
+#   spawn python -m pa_mcp.server → tools/list(>=100) → callTool(list_strategies)。
+# 任何一环坏(工具变少/改名/schema 破坏/server 起不来)，本工作流红，提醒你同步检查插件。
+#
+# 正式插件位于本仓子目录 pa-mcp-dsh-plugin/，故所有命令 working-directory 指向它。
+# 注意：GitHub Actions 只识别【仓库根】.github/workflows/，子目录里的不会触发。
+#
+# 触发方式：
+#   A) 本仓(PA_DSH)自身 push / PR / 手动 —— 用 vars.PA_MCP_REPO 指定的 PA_MCP。
+#   B) PA_MCP 仓 push 后发 repository_dispatch(pa-mcp-changed) 通知本仓 —— 见
+#      PA_MCP 侧 .github/workflows/notify-pa-dsh.yml(需配 secret PA_DSH_REPO_TOKEN)。
+name: pa-dsh smoke
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch: {}
+  repository_dispatch:
+    types: [pa-mcp-changed]
+
+env:
+  # 本仓默认分支；PA_MCP 仓地址与分支（走 GitHub 用同机构同名 PA_MCP）
+  PLUGIN_DIR: pa-mcp-dsh-plugin
+  PA_MCP_REPO: ${{ vars.PA_MCP_REPO || github.repository_owner + '/PA_MCP' }}
+  PA_MCP_BRANCH: ${{ vars.PA_MCP_BRANCH || 'main' }}
+  PA_MCP_ROOT_DIR: pa_mcp_checkout
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出 PA_DSH(本仓)
+        uses: actions/checkout@v4
+
+      - name: 检出 PA_MCP 到子目录
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.PA_MCP_REPO }}
+          ref: ${{ env.PA_MCP_BRANCH }}
+          path: ${{ env.PA_MCP_ROOT_DIR }}
+
+      - name: 装 python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: 安装 PA_MCP 依赖(含 mcp sdk)
+        working-directory: ${{ env.PA_MCP_ROOT_DIR }}
+        run: pip install .
+        env:
+          PIP_DISABLE_PIP_VERSION_CHECK: '1'
+
+      - name: 装 node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: ${{ env.PLUGIN_DIR }}/package-lock.json
+
+      - name: 安装插件依赖
+        working-directory: ${{ env.PLUGIN_DIR }}
+        run: npm ci || npm install
+
+      - name: 类型检查 + 编译
+        working-directory: ${{ env.PLUGIN_DIR }}
+        run: |
+          npm run typecheck
+          npm run build
+
+      - name: 跑 PA_MCP 桥接冒烟
+        working-directory: ${{ env.PLUGIN_DIR }}
+        run: node scripts/smoke.mjs "../../${{ env.PA_MCP_ROOT_DIR }}" "python3"
