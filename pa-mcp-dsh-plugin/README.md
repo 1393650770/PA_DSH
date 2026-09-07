@@ -50,17 +50,18 @@ D:/Project/AI/PA_MCP/PA_MCP/venv/Scripts/python.exe -m pa_mcp.server   # 手动�
 
 ## 目录结构
 
+> 本插件现以 **PA_DSH 仓库的子目录** 形式托管（PA_DSH 根另含 3 工具样例）。
+> 因此本目录**不含** `.github/`——CI workflow 放在 PA_DSH **仓库根** `.github/workflows/`（见下「CI 冒烟」）。
+
 ```
-pa-mcp-dsh-plugin/
+pa-mcp-dsh-plugin/           ← PA_DSH 仓库根下的子目录
 ├── src/index.ts           # Cordis 插件壳：spawn PA_MCP + 自动发现 + 逐工具注册 + 转发
 ├── scripts/smoke.mjs      # 无 dsh/无 key 冒烟：spawn PA_MCP→list≥100 工具→call list_strategies
 ├── package.json           # type:module；deps: @modelcontextprotocol/sdk；peer: dsh-tools/cordis/schemastery
 ├── tsconfig.json
 ├── lib/                   # tsc 编译产物（gitignore；clone 后 npm run build）
 ├── examples/
-│   ├── e2e-headless.patch.yml         # 把插件插入 dsh headless profile 的装配样例
-│   └── notify-plugin-from-pamcp.yml   # [放 PA_MCP 仓库] push 后通知本插件仓跑冒烟
-├── .github/workflows/smoke.yml        # CI：装 python+PA_MCP、node+插件、跑冒烟
+│   └── e2e-headless.patch.yml         # 把插件插入 dsh headless profile 的装配样例
 └── README.md
 ```
 
@@ -205,10 +206,12 @@ node scripts/smoke.mjs
 # 或显式指定：node scripts/smoke.mjs <PA_MCP根> <python>（env: PA_MCP_ROOT / PYTHON_BIN）
 ```
 
-**两种 CI 触发方式**（`.github/workflows/smoke.yml` 已内置，均在 ubuntu 上装 python3.12 的 PA_MCP + node 的插件 + 跑冒烟）：
+**线上联动（已接线到 GitHub）** —— 本插件是 PA_DSH 仓的子目录，GitHub Actions 只认仓库根 `.github/workflows/`，所以 workflow 都在 PA_DSH 根：
 
-1. **本仓库 push/PR**：每次改插件自身就跑一次冒烟（PA_MCP 分支用 `vars.PA_MCP_REPO` / `vars.PA_MCP_BRANCH` 指定，默认同机构同名 `PA_MCP`@main）。
-2. **PA_MCP 推送触发**：把 `examples/notify-plugin-from-pamcp.yml` 拷进 **PA_MCP 仓库**的 `.github/workflows/`，并在 PA_MCP 侧配 `PLUGIN_REPO`(如 `owner/pa-mcp-dsh-plugin`) + `PLUGIN_REPO_TOKEN`(有插件仓写权限的 PAT)。这样 PA_MCP 每次 push 都会让插件仓自动冒烟 → **"改 PA_MCP"与"验插件兼容"联动**。
+1. **冒烟 workflow**：PA_DSH 根 `.github/workflows/smoke.yml`（触发 `repository_dispatch(pa-mcp-changed)` + 本仓 push/PR/手动）。它在 ubuntu 上 checkout `1393650770/PA_MCP`、装 python3.12 的 PA_MCP + node 的插件，`working-directory: pa-mcp-dsh-plugin/` 跑 `scripts/smoke.mjs`。
+2. **PA_MCP 触发**：PA_MCP 仓 `.github/workflows/notify-pa-dsh.yml` 每次 push main 向 PA_DSH 发 `repository_dispatch(pa-mcp-changed)` → 自动触发上面冒烟 → **"改 PA_MCP"与"验插件兼容"联动**。
+   - 前提：PA_MCP 仓配 secret `PA_DSH_REPO`(默认 `1393650770/PA_DSH`) + `PA_DSH_REPO_TOKEN`(对 PA_DSH 有 `Actions: write` 权限的 PAT)；未配则只 warning、不阻塞 PA_MCP 自身 CI。
+   - 若日后本插件单独拆回独立仓，可改用 `examples/notify-plugin-from-pamcp.yml` 那份通用模板。
 
 > 注意：smoke 是**兼容性**冒烟，验证 PA_MCP 仍可被 MCP spawn+list+call；它不覆盖 PA_MCP 自身业务正确性（那属 PA_MCP 的测试）。PA_MCP 若工具数<100 或改名破坏 `list_strategies`，会红，提醒你检查插件侧命名/前缀是否需同步。
 
