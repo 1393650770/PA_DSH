@@ -1,0 +1,31 @@
+# 放进 **PA_MCP 仓库**（.github/workflows/notify-plugin.yml）
+# 作用：PA_MCP 每次 push/PR 后，通知 pa-mcp-dsh-plugin 仓库跑一次桥接冒烟，
+#       实现「改 PA_MCP → 自动验证插件是否仍兼容」。
+#
+# 前提：本工作流所在仓库(PA_MCP)有权限对 pa-mcp-dsh-plugin 仓库发 repository_dispatch。
+#   在 pa-mcp-dsh-plugin 仓库 Settings→Actions 开允许外部 dispatch；
+#   在 PA_MCP 仓库 Settings→Secrets→Actions 配： PLUGIN_REPO(如 owner/pa-mcp-dsh-plugin)
+#   + 一个有 pa-mcp-dsh-plugin 仓库写权限的 PAT → PLUGIN_REPO_TOKEN。
+name: notify pa-mcp-dsh-plugin
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 通知插件仓跑冒烟
+        if: env.PLUGIN_REPO_TOKEN
+        run: |
+          curl -sS -X POST \
+            -H "Authorization: Bearer ${{ secrets.PLUGIN_REPO_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ secrets.PLUGIN_REPO }}/dispatches \
+            -d '{"event_type":"pa-mcp-changed","client_payload":{"branch":"'"${GITHUB_SHA}"'"}}'
+      - name: 提示未配置
+        if: ${{ !env.PLUGIN_REPO_TOKEN }}
+        run: echo "未配置 PLUGIN_REPO_TOKEN，跳过远程通知（可本地手动 node scripts/smoke.mjs）"

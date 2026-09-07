@@ -1,0 +1,7 @@
+# 把 pa-mcp-dsh-plugin 插入 headless profile（实机验证用）
+# Windows 插件 path 必须是 file:// URL，且指向编译产物 lib/src/index.js
+- insert:
+    - id: pa-mcp-dsh
+      name: 'file:///D:/Project/AI/pa-mcp-dsh-plugin/lib/src/index.js'
+      config:
+        paMcpRoot: 'D:/Project/AI/PA_MCP/PA_MCP'

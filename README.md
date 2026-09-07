@@ -1,3 +1,16 @@
+# PA_DSH —— PA_MCP × DeepSeek Harness (dsh) 插件工作区
+
+本仓库含两条 dsh 插件线：
+
+| 子项 | 位置 | 覆盖工具 | 同步方式 | 定位 |
+|------|------|----------|----------|------|
+| **接入样例**（本目录根） | `.` | 3 个手写（quote/positions/order_risk） | 手写转发 | 验证"不经 MCP 用 dsh 原生工具 API 消费 Python 数据层"可行性 |
+| **正式插件壳** | [`pa-mcp-dsh-plugin/`](pa-mcp-dsh-plugin/) | **111 个自动发现**（`pa__*`） | 零手动同步（python 侧唯一事实来源） | 正式接入方案，改 PA_MCP 无需动插件 |
+
+> 生产请用 **`pa-mcp-dsh-plugin/`**（插件壳 + 自动发现）。下面的样例文档介绍最初验证用的 3 工具样例。
+
+---
+
 # PA_MCP → DeepSeek Harness (dsh) 原生工具插件 —— 接入样例
 
 本目录验证一条核心命题：**能否不经 MCP，用 dsh 的原生工具 API，把一个
