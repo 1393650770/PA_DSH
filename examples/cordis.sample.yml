@@ -1,0 +1,25 @@
+# PA_MCP dsh 原生工具插件 —— cordis 装配样例
+#
+# 把样例插件接入一个 dsh 组合(composition)。实测要点（dsh v0.1, Windows）：
+#   * name 用「编译产物 lib/index.js 的 file:// URL」，不要用裸盘符路径
+#     （ESM 加载器要求 file: scheme），也不要指目录（不支持目录 import）。
+#   * 依赖宿主已加载 @deepseek-ai/dsh-tools（base/headless 等 profile 默认含，
+#     提供 ctx.tools）。
+#   * 若改用 ctx.subprocess 方案还需 subprocess provider；本样例用 node
+#     child_process.execFile，无需。
+#
+# 实测：把下行插入 headless profile 后 `dsh --profile headless --patch <file>
+# "用 pa_quote 查 600519"`，插件可正常加载注册 3 个工具；到 LLM 调用仅需
+# DEEPSEEK_API_KEY（与内置工具一致）。
+- insert:
+    - id: pa-mcp-sample
+      name: 'file:///D:/Project/AI/PA_MCP/dsh-plugin-sample/plugin/lib/index.js'
+      config:
+        # python 可执行（须装 duckdb）。缺省自动探测 PA_MCP venv 的 python。
+        # pythonBin: 'D:/Project/AI/PA_MCP/PA_MCP/venv/Scripts/python.exe'
+        # PA_MCP 项目根目录（含 data/pa_mcp.duckdb）。缺省自动推断到其下 PA_MCP。
+        paMcpRoot: 'D:/Project/AI/PA_MCP/PA_MCP'
+        # 均可省略；仅当数据文件不在默认位置时覆盖。
+        # dbPath: 'D:/Project/AI/PA_MCP/PA_MCP/data/pa_mcp.duckdb'
+        # accountPath: 'D:/Project/AI/PA_MCP/PA_MCP/data/paper_account.json'
+        # toolTimeoutMs: 60000

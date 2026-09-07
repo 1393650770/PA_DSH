@@ -1,0 +1,11 @@
+# E2E 验证用补丁：把 PA_MCP 样例插件插入 headless profile
+# 注意：
+#   - Windows 绝对路径必须是 file:// URL，否则 ESM 加载器报
+#     "Only URLs with a scheme in: file, data, and node are supported"
+#   - 指向编译产物 lib/index.js（直接 import 目录不被 ESM 支持）
+# 运行：dsh --profile headless --patch <本文件> "你的问题"
+- insert:
+    - id: pa-mcp-sample
+      name: 'file:///D:/Project/AI/PA_MCP/dsh-plugin-sample/plugin/lib/index.js'
+      config:
+        paMcpRoot: 'D:/Project/AI/PA_MCP/PA_MCP'
